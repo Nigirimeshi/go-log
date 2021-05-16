@@ -1,4 +1,4 @@
-package log
+package go_log
 
 import (
 	"os"
@@ -8,8 +8,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
-
-var _ Logger = (*zapLogger)(nil)
 
 type zapLogger struct {
 	sugaredLogger *zap.SugaredLogger
@@ -30,9 +28,9 @@ func newZapLogger(opts options) (Logger, error) {
 		level := getZapLevel(opts.fileLevel)
 		writer := zapcore.AddSync(&lumberjack.Logger{
 			Filename: opts.fileLocation,
-			MaxSize:  opts.fileMaxSize,
+			MaxSize:  int(opts.fileMaxSize),
 			Compress: opts.fileCompress,
-			MaxAge:   opts.fileMaxAge,
+			MaxAge:   int(opts.fileMaxAge),
 		})
 		core := zapcore.NewCore(getEncoder(opts.fileJSONFormat), writer, level)
 		cores = append(cores, core)
@@ -51,6 +49,8 @@ func newZapLogger(opts options) (Logger, error) {
 		sugaredLogger: logger.Sugar(),
 	}, nil
 }
+
+var _ Logger = (*zapLogger)(nil)
 
 func (l *zapLogger) Debugf(format string, args ...interface{}) {
 	l.sugaredLogger.Debugf(format, args...)
@@ -108,8 +108,7 @@ func getEncoder(isJSON bool) zapcore.Encoder {
 }
 
 func getTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(t.Format(timestampFormat))
-	// enc.AppendString(t.Format(time.RFC822Z))
+	enc.AppendString(t.Format(time.RFC3339Nano))
 }
 
 func getZapLevel(level Level) zapcore.Level {

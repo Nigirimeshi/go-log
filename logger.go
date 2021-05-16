@@ -1,50 +1,20 @@
-package log
+package go_log
 
-import "errors"
-
-var _logger Logger
-
-// Level represents a log level.
-type Level int32
+type loggerInstance uint8
 
 const (
-	// DEBUG information for programmer low level analysis.
-	DEBUG Level = iota + 1
-	// INFO information about steady state operations.
-	INFO
-	// WARN is for logging messages about possible issues.
-	WARN
-	// ERROR is for logging errors.
-	ERROR
-	// FATAL is for logging fatal messages. The system shutdown after logging the message.
-	FATAL
-	// PANIC ...
-	PANIC
-)
-
-type loggerInstance int
-
-const (
-	// InstanceZapLogger is zap logger instance.
-	InstanceZapLogger loggerInstance = iota + 1
-	// InstanceLogrusLogger is logrus logger instance.
-	InstanceLogrusLogger
-	// DefaultLogger is zap logger instance.
-	DefaultLogger = InstanceZapLogger
-)
-
-const (
-	timestampFormat = "2006-01-02 15:04:05 -0700"
-)
-
-var (
-	errInvalidLoggerInstance = errors.New("invalid logger instance")
+	// Zap 表示 zap 实例。
+	Zap loggerInstance = iota
+	// Logrus 表示 logrus 实例。
+	Logrus
+	// DefaultLogger 表示默认的日志实例。
+	DefaultLogger = Zap
 )
 
 // Fields Type to pass when we want to call WithFields for structured logging.
 type Fields map[string]interface{}
 
-// Logger ...
+// Logger 定义了日志接口。
 type Logger interface {
 	Debugf(format string, args ...interface{})
 
@@ -61,65 +31,54 @@ type Logger interface {
 	WithFields(fields Fields) Logger
 }
 
-func (l Level) String() string {
-	switch l {
-	case DEBUG:
-		return "debug"
-	case INFO:
-		return "info"
-	case WARN:
-		return "warn"
-	case ERROR:
-		return "error"
-	case FATAL:
-		return "fatal"
-	case PANIC:
-		return "panic"
-	default:
-		return "unknown"
-	}
-}
-
-// New returns an instance of logger
-func New(opts ...Option) error {
+// New 返回一个 Logger 接口实例。
+func New(opts ...Option) (Logger, error) {
 	options := options{
-		loggerInstance:    DefaultLogger,
+		global:         true,
+		loggerInstance: DefaultLogger,
+
 		enableConsole:     true,
 		consoleJSONFormat: false,
-		consoleLevel:      INFO,
-		enableFile:        false,
-		fileJSONFormat:    false,
-		fileLevel:         INFO,
-		fileLocation:      "",
-		fileMaxSize:       100,
-		fileMaxBackups:    3,
-		fileMaxAge:        7,
-		fileCompress:      false,
+		consoleLevel:      DEFAULT_LEVEL,
+
+		enableFile:     false,
+		fileJSONFormat: false,
+		fileLevel:      DEFAULT_LEVEL,
+		fileLocation:   "",
+		fileMaxSize:    100,
+		fileMaxBackups: 5,
+		fileMaxAge:     7,
+		fileCompress:   false,
 	}
 	for _, o := range opts {
 		o.apply(&options)
 	}
+
+	var logger Logger
 	switch options.loggerInstance {
-	case InstanceZapLogger:
+	case Zap:
 		zapLogger, err := newZapLogger(options)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		_logger = zapLogger
-		return nil
+		logger = zapLogger
+		return logger, err
 
-	case InstanceLogrusLogger:
+	case Logrus:
 		logrusLogger, err := newLogrusLogger(options)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		_logger = logrusLogger
-		return nil
+		logger = logrusLogger
+		return logger, nil
 
 	default:
-		return errInvalidLoggerInstance
+		return nil, errInvalidLoggerInstance
 	}
 }
+
+// _logger 是默认的全局日志。
+var _logger Logger
 
 // Debugf ...
 func Debugf(format string, args ...interface{}) {

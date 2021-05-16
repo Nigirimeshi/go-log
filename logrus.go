@@ -1,8 +1,9 @@
-package log
+package go_log
 
 import (
 	"io"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -30,9 +31,9 @@ func newLogrusLogger(opts options) (Logger, error) {
 	stdOutHandler := os.Stdout
 	fileHandler := &lumberjack.Logger{
 		Filename: opts.fileLocation,
-		MaxSize:  opts.fileMaxSize,
+		MaxSize:  int(opts.fileMaxSize),
 		Compress: opts.fileCompress,
-		MaxAge:   opts.fileMaxAge,
+		MaxAge:   int(opts.fileMaxAge),
 	}
 	lLogger := &logrus.Logger{
 		Out:          stdOutHandler,
@@ -61,13 +62,13 @@ func newLogrusLogger(opts options) (Logger, error) {
 func getFormatter(isJSON bool) logrus.Formatter {
 	if isJSON {
 		return &logrus.JSONFormatter{
-			TimestampFormat: timestampFormat,
+			TimestampFormat: time.RFC3339Nano,
 		}
 	}
 	return &logrus.TextFormatter{
 		FullTimestamp:          true,
 		DisableLevelTruncation: true,
-		TimestampFormat:        timestampFormat,
+		TimestampFormat:        time.RFC3339Nano,
 	}
 }
 
